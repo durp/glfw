@@ -1,19 +1,24 @@
 package glfw
 
 /*
-#include <stdint.h>
-#include "glfw/deps/vulkan/vulkan.h"
-#include "glfw/include/GLFW/glfw3.h"
-#include "vulkan.h"
+#include "glfw/src/internal.h"
+
+GLFWAPI VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow* window, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
+GLFWAPI GLFWvkproc glfwGetInstanceProcAddress(VkInstance instance, const char* procname);
 
 // Helper function for doing raw pointer arithmetic
 static inline const char* getArrayIndex(const char** array, unsigned int index) {
 	return array[index];
 }
+
+void* getVulkanProcAddr() {
+	return glfwGetInstanceProcAddress;
+}
 */
 import "C"
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"unsafe"
 )
@@ -67,14 +72,14 @@ func (window *Window) CreateWindowSurface(instance interface{}, allocCallbacks u
 	}
 	val := reflect.ValueOf(instance)
 	if val.Kind() != reflect.Ptr {
-		return 0, errors.New("vulkan: instance is not a VkInstance (expected kind Ptr, got " + val.Kind().String() + ")")
+		return 0, fmt.Errorf("vulkan: instance is not a VkInstance (expected kind Ptr, got %s)", val.Kind())
 	}
 	var vulkanSurface C.VkSurfaceKHR
 	ret := C.glfwCreateWindowSurface(
 		(C.VkInstance)(unsafe.Pointer(reflect.ValueOf(instance).Pointer())), window.data,
 		(*C.VkAllocationCallbacks)(allocCallbacks), (*C.VkSurfaceKHR)(unsafe.Pointer(&vulkanSurface)))
 	if ret != C.VK_SUCCESS {
-		return 0, errors.New("vulkan: error creating window surface")
+		return 0, fmt.Errorf("vulkan: error creating window surface: %d", ret)
 	}
 	return uintptr(unsafe.Pointer(&vulkanSurface)), nil
 }
